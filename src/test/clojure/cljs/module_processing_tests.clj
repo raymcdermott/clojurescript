@@ -27,22 +27,32 @@
 
 (defn absolute-module-path
   ([relpath]
-   (absolute-module-path relpath false))
+   (absolute-module-path relpath false true))
   ([relpath code?]
+   (absolute-module-path relpath code? true))
+  ([relpath code? patch-hyphens?]
    (let [filename (as-> (subs relpath (inc (.lastIndexOf relpath "/"))) $
-                    (string/replace $ "_" "-")
-                    (subs $ 0 (.lastIndexOf $ ".")))
+                        (string/replace $ "_" "-")
+                        (subs $ 0 (.lastIndexOf $ ".")))
          dirname (as-> (io/file relpath) $
-                   (.getAbsolutePath $)
-                   (subs $ 0 (.lastIndexOf $ (str File/separator)))
-                   (string/replace $ "/" "$")
-                   (string/replace $ "-" "_")
-                   ;; Windows
-                   (string/replace $ "\\" "$")
-                   (if code?
-                     (string/replace $ ":" "_")
-                     (string/replace $ ":" "-")))]
+                       (.getAbsolutePath $)
+                       (subs $ 0 (.lastIndexOf $ (str File/separator)))
+                       (string/replace $ "/" "$")
+                       (if patch-hyphens?
+                         (string/replace $ "-" "_")
+                         $)
+                       ;; Windows
+                       (string/replace $ "\\" "$")
+                       (if code?
+                         (string/replace $ ":" "_")
+                         (string/replace $ ":" "-")))]
      (str "module" (when-not (.startsWith dirname "$") "$") dirname "$" filename))))
+
+(defn real-module-path
+  ([relpath]
+   (absolute-module-path relpath false false))
+  ([relpath code?]
+   (absolute-module-path relpath code? false)))
 
 (defmethod closure/js-transforms :jsx [ijs opts]
   (preprocess-jsx ijs opts))
@@ -68,9 +78,9 @@
                                  :preprocess  :jsx}]
                  :closure-warnings {:non-standard-jsdoc :off}})))
         "processed modules are added to :libs"))
-    (is (= {"React" {:name (absolute-module-path "src/test/cljs/reactJS.js")
+    (is (= {"React" {:name (real-module-path "src/test/cljs/reactJS.js")
                      :module-type :commonjs}
-            "Circle" {:name (absolute-module-path "src/test/cljs/Circle.js")
+            "Circle" {:name (real-module-path "src/test/cljs/Circle.js")
                       :module-type :commonjs}}
            (:js-module-index @cenv))
         "Processed modules are added to :js-module-index")))
@@ -94,7 +104,7 @@
                   :closure-warnings {:non-standard-jsdoc :off}})))
           "processed modules are added to :libs")
 
-      (is (= {"es6-hello" {:name (absolute-module-path "src/test/cljs/es6_hello.js")
+      (is (= {"es6-hello" {:name (real-module-path "src/test/cljs/es6_hello.js")
                            :module-type :es6}}
              (:js-module-index @cenv))
           "Processed modules are added to :js-module-index")
@@ -159,9 +169,9 @@
                                  :preprocess  :jsx}]
                  :closure-warnings {:non-standard-jsdoc :off}})))
         "processed modules are added to :libs"))
-    (is (= {"React" {:name (absolute-module-path "src/test/cljs/react-min.js")
+    (is (= {"React" {:name (real-module-path "src/test/cljs/react-min.js")
                      :module-type :commonjs}
-            "Circle" {:name (absolute-module-path "src/test/cljs/Circle-min.js")
+            "Circle" {:name (real-module-path "src/test/cljs/Circle-min.js")
                       :module-type :commonjs}}
            (:js-module-index @cenv))
         "Processed modules are added to :js-module-index")))
@@ -188,9 +198,9 @@
                  :closure-warnings {:non-standard-jsdoc :off}})))
         "processed modules are added to :libs"))
 
-    (is (= {"React" {:name (absolute-module-path "src/test/cljs/reactJS.js")
+    (is (= {"React" {:name (real-module-path "src/test/cljs/reactJS.js")
                      :module-type :commonjs}
-            "Circle" {:name (absolute-module-path "src/test/cljs/Circle.js")
+            "Circle" {:name (real-module-path "src/test/cljs/Circle.js")
                       :module-type :commonjs}}
            (:js-module-index @cenv))
         "Processed modules are added to :js-module-index")))
